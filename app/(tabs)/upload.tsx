@@ -1,7 +1,8 @@
+import { uploadDocumentApi } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { UploadItem } from "../../components/UploadItem";
 import { useUploadStore } from "../../store/uploadStore";
 import { colors } from "../../theme/colors";
@@ -10,6 +11,10 @@ export default function Upload() {
   const { uploads, addUpload, markDone } = useUploadStore();
 
   const pickFile = async () => {
+    if (Platform.OS === 'web') {
+      alert('Document upload is not supported on web.');
+      return;
+    }
     const res = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",
     });
@@ -29,13 +34,14 @@ export default function Upload() {
     });
 
     // Fake processing like video
-    setTimeout(() => {
-      markDone(id);
-    }, 2500);
+    // setTimeout(() => {
+    //   markDone(id);
+    // }, 2500);
 
     //when api comes
     // await api.upload(file);
-    // markDone(id);
+    await uploadDocumentApi(file);
+    markDone(id);
   };
 
   return (

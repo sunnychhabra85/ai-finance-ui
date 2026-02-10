@@ -1,4 +1,8 @@
+import { registerApi } from "@/services/authApi";
+import { useAuthStore } from "@/store/authStore";
+import { router } from "expo-router";
 import React, { useState } from "react";
+import { Alert } from "react-native";
 import { isEmailValid, isPasswordValid } from "../utils/validators";
 import { AppButton } from "./AppButton";
 import { AppInput } from "./AppInput";
@@ -9,6 +13,8 @@ export const RegisterForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
+
+  const login = useAuthStore((s) => s.login);
 
   const nameError =
     touched && name.length < 3 ? "Enter your full name" : "";
@@ -25,6 +31,16 @@ export const RegisterForm = () => {
     name.length >= 3 &&
     isEmailValid(email) &&
     isPasswordValid(password);
+
+  const handleRegister = async () => {
+  try {
+    const res = await registerApi(email, password);
+    login(res.access_token);
+    router.replace('/(tabs)/overview');
+  } catch (e) {
+    Alert.alert('Register failed');
+  }
+};
 
   return (
     <Card>
@@ -51,7 +67,10 @@ export const RegisterForm = () => {
       <AppButton
         title="Create Account"
         disabled={!isValid}
-        onPress={() => setTouched(true)}
+        onPress={() => {
+          setTouched(true);
+          handleRegister();
+        }}
       />
     </Card>
   );

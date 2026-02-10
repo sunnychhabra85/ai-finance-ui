@@ -1,11 +1,13 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet } from "react-native";
+import { Alert, StyleSheet } from "react-native";
+import { loginApi } from '../services/authApi';
 import { useAuthStore } from "../store/authStore";
 import { isEmailValid, isPasswordValid } from "../utils/validators";
 import { AppButton } from "./AppButton";
 import { AppInput } from "./AppInput";
 import { Card } from "./Card";
+
 
 export const LoginForm = () => {
   const login = useAuthStore((s) => s.login);
@@ -15,6 +17,19 @@ export const LoginForm = () => {
   const [touched, setTouched] = useState(false);
 
   const isValid = isEmailValid(email) && isPasswordValid(password);
+
+  const handleLogin = async () => {
+  try {
+    const res = await loginApi(email, password);
+    console.log('LOGIN RES:', res);
+    console.log('TOKEN:', res.access_token);
+
+    login(res.access_token, res.user ?? true); // pass user for redirect
+    router.replace('/(tabs)/overview');
+  } catch (e) {
+    Alert.alert('Login failed');
+  }
+};
 
   return (
     <>
@@ -47,8 +62,9 @@ export const LoginForm = () => {
           onPress={() => {
             setTouched(true);
             if (!isValid) return;
-            login(email);
-            router.replace("/(tabs)/overview");
+            // login(email);
+            // router.replace("/(tabs)/overview");
+            handleLogin();
           }}
           disabled={!isValid}
         />
