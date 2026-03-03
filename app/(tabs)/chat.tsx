@@ -1,12 +1,16 @@
 import React from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { ChatBubble } from "../../components/ChatBubble";
 import { ChatChips } from "../../components/ChatChips";
-import { colors } from "../../theme/colors";
+import { ResponsiveContainer } from "../../components/ResponsiveContainer";
+import { getAdaptivePadding } from "../../utils/responsive";
 
 export default function Chat() {
+  const { width } = useWindowDimensions();
+  const padding = getAdaptivePadding(width);
+
   return (
-    <View style={styles.container}>
+    <ResponsiveContainer contentContainerStyle={{ paddingHorizontal: padding, justifyContent: 'space-between' }}>
       {/* TOP CONTENT */}
       <View>
         <View style={styles.headerRow}>
@@ -35,18 +39,11 @@ export default function Chat() {
           <Text style={styles.send}>➤</Text>
         </View>
       </View>
-    </View>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: colors.background,
-    justifyContent: "space-between",
-  },
-
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

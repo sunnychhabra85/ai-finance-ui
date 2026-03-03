@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import {
-    ScrollView,
     StyleSheet,
-    View
+    View,
+    useWindowDimensions
 } from "react-native";
 
 import { Chips } from "../../components/Chips";
 import { InsightsBlock } from "../../components/InsightsBlock";
+import { ResponsiveContainer } from "../../components/ResponsiveContainer";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { SearchBar } from "../../components/SearchBar";
 import { Segment } from "../../components/Segment";
@@ -16,14 +17,15 @@ import type { Category } from "../../data/transactions";
 import { useTransactions } from "../../hooks/useTransactions";
 import { useAuthStore } from "../../store/authStore";
 import { colors } from "../../theme/colors";
+import { getAdaptivePadding } from "../../utils/responsive";
 
 export default function Overview() {
     const [tab, setTab] = useState("Transactions");
     const logout = useAuthStore((s) => s.logout);
     const [search, setSearch] = useState("");
-    // Import Category type if not already imported
-    // import type { Category } from "../../types/Category";
+    const { width } = useWindowDimensions();
     const [category, setCategory] = useState<Category | "All">("All");
+    const padding = getAdaptivePadding(width);
 
     const filtered = useTransactions(search, category);
 
@@ -36,31 +38,15 @@ export default function Overview() {
     ];
 
     return (
-        <ScrollView
-            style={styles.container}
-            contentContainerStyle={{ paddingBottom: 140 }}
-            showsVerticalScrollIndicator={false}
-        >
+        <ResponsiveContainer style={{ backgroundColor: colors.background, paddingHorizontal: padding }}>
             {/* Header with logout */}
             <View style={styles.headerRow}>
                 <View>
-                    {/* <Text style={styles.title}>Financial Overview</Text>
-          <Text style={styles.subtitle}>Your transactions & insights</Text> */}
                     <ScreenHeader
                         title="Financial Overview"
                         subtitle="Your transactions & insights"
                     />
-
                 </View>
-
-                {/* <TouchableOpacity
-          onPress={() => {
-            logout();
-            router.replace("/");
-          }}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#64748B" />
-        </TouchableOpacity> */}
             </View>
 
             <SummaryCards />
@@ -86,21 +72,14 @@ export default function Overview() {
             ) : (
                 <InsightsBlock />
             )}
-        </ScrollView>
+        </ResponsiveContainer>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background,
-        padding: 24,
-    },
     headerRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
     },
-    title: { fontSize: 26, fontWeight: "700" },
-    subtitle: { color: "#64748B", marginTop: 4 },
 });

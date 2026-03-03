@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -46,12 +46,14 @@ export default function Auth() {
     opacity: opacity.value,
   }));
 
+  const isWeb = Platform.OS === 'web';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && styles.webContainer]}>
       {/* Fixed Top */}
       <View style={styles.logoBox}>
-  <Text style={styles.logoText}>Ai</Text>
-</View>
+        <Text style={styles.logoText}>Ai</Text>
+      </View>
       <Text style={styles.title}>
         {mode === "login" ? "Welcome Back" : "Create Account"}
       </Text>
@@ -74,60 +76,60 @@ export default function Auth() {
         </Text>
       </TouchableOpacity>
 
-       <Text style={styles.footer}>
+      <Text style={styles.footer}>
         🔒 Your data is encrypted and secure
       </Text>
     </View>
-    
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  backgroundColor: colors.background,
-  paddingHorizontal: 24,
-  paddingTop: 60,   // ⭐ pushes content to top like design
-},
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+  },
+  webContainer: {
+    width: 414,
+    marginHorizontal: 'auto',
+    backgroundColor: colors.background,
+  },
   logo: { fontSize: 40, textAlign: "center", fontWeight: "700" },
   logoBox: {
-  width: 70,
-  height: 70,
-  borderRadius: 18,
-  backgroundColor: "#2563EB",
-  alignSelf: "center",
-  justifyContent: "center",
-  alignItems: "center",
-  marginBottom: 24,
-},
-
-title: {
-  fontSize: 26,
-  textAlign: "center",
-  fontWeight: "700",
-},
-
-subtitle: {
-  textAlign: "center",
-  color: colors.textLight,
-  marginTop: 8,
-  marginBottom: 28,
-},
+    width: 70,
+    height: 70,
+    borderRadius: 18,
+    backgroundColor: "#2563EB",
+    alignSelf: "center",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 26,
+    textAlign: "center",
+    fontWeight: "700",
+  },
+  subtitle: {
+    textAlign: "center",
+    color: colors.textLight,
+    marginTop: 8,
+    marginBottom: 28,
+  },
   switch: {
     textAlign: "center",
     marginTop: 20,
     color: colors.textLight,
   },
-  
-logoText: {
-  color: "#fff",
-  fontSize: 26,
-  fontWeight: "700",
-},
-footer: {
+  logoText: {
+    color: "#fff",
+    fontSize: 26,
+    fontWeight: "700",
+  },
+  footer: {
     textAlign: "center",
     color: "#94A3B8",
-    // marginTop: 20,
     fontSize: 13,
     position: "absolute",
     bottom: 50,

@@ -1,15 +1,24 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { colors } from "../theme/colors";
+import { getAdaptiveFontSize } from "../utils/responsive";
 
 export const AppButton = ({ title, onPress, disabled }: any) => {
+  const { width } = useWindowDimensions();
+  
   return (
     <TouchableOpacity
-      style={[styles.button, disabled && { opacity: 0.5 }]}
+      style={[
+        styles.button,
+        disabled && { opacity: 0.5 },
+        { paddingVertical: width > 768 ? 18 : 16 },
+      ]}
       onPress={onPress}
       disabled={disabled}
     >
-      <Text style={styles.text}>{title} →</Text>
+      <Text style={[styles.text, { fontSize: getAdaptiveFontSize(16, width) }]}>
+        {title} →
+      </Text>
     </TouchableOpacity>
   );
 };
@@ -17,7 +26,6 @@ export const AppButton = ({ title, onPress, disabled }: any) => {
 const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 20,
@@ -25,6 +33,5 @@ const styles = StyleSheet.create({
   text: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 16,
   },
 });

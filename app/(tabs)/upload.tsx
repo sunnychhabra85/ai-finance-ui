@@ -1,20 +1,67 @@
 import { uploadDocumentApi } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useRef } from "react";
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { ResponsiveContainer } from "../../components/ResponsiveContainer";
 import { UploadItem } from "../../components/UploadItem";
 import { useUploadStore } from "../../store/uploadStore";
 import { colors } from "../../theme/colors";
+import { getAdaptivePadding } from "../../utils/responsive";
 
 export default function Upload() {
   const { uploads, addUpload, markDone } = useUploadStore();
+  const { width } = useWindowDimensions();
+  const padding = getAdaptivePadding(width);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pickFileWeb = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleWebFileChange = async (event: any) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check if it's a PDF
+    if (file.type !== 'application/pdf') {
+      alert('Please select a PDF file');
+      return;
+    }
+
+    const id = Date.now().toString();
+    const sizeInMB = (file.size / 1024 / 1024).toFixed(1);
+
+    addUpload({
+      id,
+      name: file.name,
+      size: `${sizeInMB} MB`,
+      date: new Date().toLocaleDateString(),
+      status: "processing",
+    });
+
+    try {
+      await uploadDocumentApi(file);
+      markDone(id);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed. Please try again.');
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const pickFile = async () => {
     if (Platform.OS === 'web') {
-      alert('Document upload is not supported on web.');
+      pickFileWeb();
       return;
     }
+
     const res = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",
     });
@@ -33,19 +80,17 @@ export default function Upload() {
       status: "processing",
     });
 
-    // Fake processing like video
-    // setTimeout(() => {
-    //   markDone(id);
-    // }, 2500);
-
-    //when api comes
-    // await api.upload(file);
-    await uploadDocumentApi(file);
-    markDone(id);
+    try {
+      await uploadDocumentApi(file);
+      markDone(id);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed. Please try again.');
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <ResponsiveContainer contentContainerStyle={{ paddingHorizontal: padding }}>
       <Text style={styles.title}>Upload Statement</Text>
       <Text style={styles.subtitle}>
         Upload your bank PDF to analyze spending
@@ -62,6 +107,17 @@ export default function Upload() {
         </Text>
       </TouchableOpacity>
 
+      {/* Hidden file input for web */}
+      {Platform.OS === 'web' && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,application/pdf"
+          onChange={handleWebFileChange}
+          style={{ display: 'none' }}
+        />
+      )}
+
       <Text style={styles.recent}>RECENT UPLOADS</Text>
 
       {uploads.map((u) => (
@@ -74,16 +130,11 @@ export default function Upload() {
           color="#DBEAFE"
         />
       ))}
-    </View>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 24,
-  },
   title: { fontSize: 26, fontWeight: "700" },
   subtitle: {
     color: colors.textLight,

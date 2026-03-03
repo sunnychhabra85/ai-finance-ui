@@ -65,14 +65,51 @@ const UPLOAD_API_BASE = getUploadApiBase();
 
 export const uploadDocumentApi = async (file: any) => {
   const formData = new FormData();
-  formData.append('file', file);
+  
+  // Handle both web File objects and React Native file objects
+  if (Platform.OS === 'web') {
+    // Web: file is a File object
+    formData.append('file', file, file.name);
+  } else {
+    // Mobile: file has uri, name, size properties
+    const uriParts = file.uri.split('/');
+    const fileName = uriParts[uriParts.length - 1];
+    
+    if (Platform.OS === 'android') {
+      // Android
+      formData.append('file', {
+        uri: file.uri,
+        type: file.mimeType || 'application/pdf',
+        name: fileName || file.name,
+      } as any);
+    } else {
+      // iOS
+      formData.append('file', {
+        uri: file.uri.replace('file://', ''),
+        type: file.mimeType || 'application/pdf',
+        name: fileName || file.name,
+      } as any);
+    }
+  }
 
-  const res = await fetch(`${UPLOAD_API_BASE}/upload`, {
-    method: 'POST',
-    body: formData,
-    // Add headers if needed
-  });
+  try {
+    const res = await fetch(`${UPLOAD_API_BASE}/upload`, {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header for FormData - browser/fetch will set it automatically
+    });
 
-  if (!res.ok) throw new Error('Upload failed');
-  return res.json();
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Upload failed: ${res.status} ${res.statusText} - ${errorText}`);
+    }
+    return res.json();
+  } catch (error: any) {
+    console.error('Upload API Error:', {
+      message: error?.message,
+      platform: Platform.OS,
+      fileName: file?.name || file?.uri,
+    });
+    throw error;
+  }
 };
