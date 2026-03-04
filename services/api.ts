@@ -1,6 +1,13 @@
 import { Platform } from 'react-native';
 
-// Use environment variable or fallback for web
+// IMPORTANT: To run on a physical device, you need to use your computer's local IP address
+// instead of localhost or 10.0.2.2. Find your IP address:
+// - Windows: Run 'ipconfig' and look for IPv4 Address (e.g., 192.168.1.100)
+// - Mac/Linux: Run 'ifconfig' or 'ip addr' (e.g., 192.168.1.100)
+// Then set these environment variables or update the fallback IPs below
+
+// For physical devices, replace these with your computer's local network IP
+const DEVICE_IP = process.env.EXPO_PUBLIC_API_HOST || '10.0.2.2'; // Change to your IP (e.g., '192.168.1.100')
 
 const getApiBase = () => {
   const platformOS = Platform.OS;
@@ -8,8 +15,9 @@ const getApiBase = () => {
   if (platformOS === 'web') {
     return process.env.REACT_APP_API_BASE || 'http://localhost:3001/api/v1';
   }
-  if (platformOS === 'android') {
-    return 'http://10.0.2.2:3001/api/v1';
+  // For Android/iOS, use DEVICE_IP which works for both emulator (10.0.2.2) and physical devices
+  if (platformOS === 'android' || platformOS === 'ios') {
+    return `http://${DEVICE_IP}:3001/api/v1`;
   }
   return 'http://localhost:3001/api/v1';
 };
@@ -19,9 +27,14 @@ export const API_BASE = getApiBase();
 export const apiPost = async (url: string, body: any) => {
   const fullUrl = `${API_BASE}${url}`;
   
+  console.log('🚀 Making API request:', { url: fullUrl, method: 'POST' });
+  
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ Request timeout after 30 seconds');
+      controller.abort();
+    }, 30000); // 30 second timeout (increased from 10s)
 
     const res = await fetch(fullUrl, {
       method: 'POST',
@@ -31,6 +44,7 @@ export const apiPost = async (url: string, body: any) => {
     });
 
     clearTimeout(timeoutId);
+    console.log('✅ API response received:', { status: res.status, url: fullUrl });
 
     if (!res.ok) {
       const errorText = await res.text();
@@ -38,11 +52,26 @@ export const apiPost = async (url: string, body: any) => {
     }
     return res.json();
   } catch (error: any) {
-    console.error('API Error Details:', {
+    if (error?.name === 'AbortError') {
+      console.error('❌ Request aborted - Backend not responding!', {
+        url: fullUrl,
+        platform: Platform.OS,
+        deviceIP: DEVICE_IP,
+        possibleCauses: [
+          '1. Backend service is not running',
+          '2. Wrong IP address or port',
+          '3. Firewall blocking connection',
+          '4. Not on same network (for physical device)'
+        ]
+      });
+      throw new Error(`Backend not responding at ${fullUrl}. Is your backend service running?`);
+    }
+    console.error('❌ API Error Details:', {
       message: error?.message,
       name: error?.name,
       url: fullUrl,
       platform: Platform.OS,
+      deviceIP: DEVICE_IP,
     });
     throw error;
   }
@@ -52,8 +81,8 @@ const getUploadApiBase = () => {
   if (Platform.OS === 'web') {
     return process.env.REACT_APP_UPLOAD_API_BASE || 'http://localhost:3002/api/v1';
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3002/api/v1'; // Use 10.0.2.2 for Android emulator
+  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    return `http://${DEVICE_IP}:3002/api/v1`;
   }
   return 'http://localhost:3002/api/v1';
 };
@@ -62,8 +91,8 @@ const getAnalyticsApiBase = () => {
   if (Platform.OS === 'web') {
     return process.env.REACT_APP_ANALYTICS_API_BASE || 'http://localhost:3004/api/v1';
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3004/api/v1';
+  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    return `http://${DEVICE_IP}:3004/api/v1`;
   }
   return 'http://localhost:3004/api/v1';
 };
@@ -72,8 +101,8 @@ const getNotificationApiBase = () => {
   if (Platform.OS === 'web') {
     return process.env.REACT_APP_NOTIFICATION_API_BASE || 'http://localhost:3005/api/v1';
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3005/api/v1';
+  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    return `http://${DEVICE_IP}:3005/api/v1`;
   }
   return 'http://localhost:3005/api/v1';
 };
@@ -82,6 +111,16 @@ const getNotificationApiBase = () => {
 const UPLOAD_API_BASE = getUploadApiBase();
 export const ANALYTICS_API_BASE = getAnalyticsApiBase();
 export const NOTIFICATION_API_BASE = getNotificationApiBase();
+
+// Log API configuration for debugging
+console.log('🌐 API Configuration:', {
+  platform: Platform.OS,
+  deviceIP: DEVICE_IP,
+  authAPI: API_BASE,
+  uploadAPI: UPLOAD_API_BASE,
+  analyticsAPI: ANALYTICS_API_BASE,
+  notificationAPI: NOTIFICATION_API_BASE,
+});
 
 export const uploadDocumentApi = async (file: any, token?: string) => {
   // Derive common file metadata across platforms
@@ -177,41 +216,81 @@ export const uploadDocumentApi = async (file: any, token?: string) => {
 
 // Helper function to get with auth token
 const getWithAuth = async (url: string, token?: string) => {
+  console.log('🚀 Making GET request:', { url, hasToken: !!token });
+  
   const headers: Record<string, string> = {};
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
-    method: 'GET',
-    headers,
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ GET request timeout after 30 seconds:', url);
+      controller.abort();
+    }, 30000);
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+    const res = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    console.log('✅ GET response received:', { status: res.status, url });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+    }
+    return res.json();
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.error('❌ GET request aborted:', url);
+      throw new Error(`Backend not responding at ${url}. Is your backend service running?`);
+    }
+    throw error;
   }
-  return res.json();
 };
 
 // Helper function to post with auth token
 const postWithAuth = async (url: string, body: any, token?: string) => {
+  console.log('🚀 Making POST request:', { url, hasToken: !!token });
+  
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ POST request timeout after 30 seconds:', url);
+      controller.abort();
+    }, 30000);
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    console.log('✅ POST response received:', { status: res.status, url });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+    }
+    return res.json();
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.error('❌ POST request aborted:', url);
+      throw new Error(`Backend not responding at ${url}. Is your backend service running?`);
+    }
+    throw error;
   }
-  return res.json();
 };
 
 // Upload Service APIs
