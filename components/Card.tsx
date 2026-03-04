@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { colors } from "../theme/colors";
 import { getAdaptiveBorderRadius } from "../utils/responsive";
 
@@ -30,10 +30,16 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    ...(Platform.OS === 'web'
+      ? {
+          boxShadow: '0 10px 20px 0 rgba(0, 0, 0, 0.08)',
+        }
+      : {
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 8,
+        }),
   },
 });

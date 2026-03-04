@@ -3,6 +3,12 @@ import { ActivityIndicator, Platform, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 // If useAuthStore is the default export:
 import { useAuthStore } from "../store/authStore";
+import { suppressWarnings } from "../utils/suppressWarnings";
+
+// Suppress known third-party library warnings
+if (Platform.OS === 'web') {
+  suppressWarnings();
+}
 
 // Or, if useAuthStore is not exported at all, export it from '../store/authStore':
 // export const useAuthStore = ... (in ../store/authStore)

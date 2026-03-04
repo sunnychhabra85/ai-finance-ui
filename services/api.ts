@@ -4,23 +4,20 @@ import { Platform } from 'react-native';
 
 const getApiBase = () => {
   const platformOS = Platform.OS;
-  console.log('Platform:', platformOS);
   
   if (platformOS === 'web') {
-    return process.env.REACT_APP_API_BASE || 'http://localhost:3001';
+    return process.env.REACT_APP_API_BASE || 'http://localhost:3001/api/v1';
   }
   if (platformOS === 'android') {
-    return 'http://10.0.2.2:3001';
+    return 'http://10.0.2.2:3001/api/v1';
   }
-  return 'http://localhost:3001';
+  return 'http://localhost:3001/api/v1';
 };
 
 export const API_BASE = getApiBase();
 
 export const apiPost = async (url: string, body: any) => {
   const fullUrl = `${API_BASE}${url}`;
-  console.log('Making request to:', fullUrl);
-  console.log('Request body:', body);
   
   try {
     const controller = new AbortController();
@@ -53,57 +50,121 @@ export const apiPost = async (url: string, body: any) => {
 
 const getUploadApiBase = () => {
   if (Platform.OS === 'web') {
-    return process.env.REACT_APP_UPLOAD_API_BASE || 'http://localhost:3003';
+    return process.env.REACT_APP_UPLOAD_API_BASE || 'http://localhost:3002/api/v1';
   }
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3003'; // Use 10.0.2.2 for Android emulator
+    return 'http://10.0.2.2:3002/api/v1'; // Use 10.0.2.2 for Android emulator
   }
-  return 'http://localhost:3003';
+  return 'http://localhost:3002/api/v1';
 };
-// Use a different base URL for document upload service
-const UPLOAD_API_BASE = getUploadApiBase();
 
-export const uploadDocumentApi = async (file: any) => {
-  const formData = new FormData();
-  
-  // Handle both web File objects and React Native file objects
+const getAnalyticsApiBase = () => {
   if (Platform.OS === 'web') {
-    // Web: file is a File object
-    formData.append('file', file, file.name);
-  } else {
-    // Mobile: file has uri, name, size properties
-    const uriParts = file.uri.split('/');
-    const fileName = uriParts[uriParts.length - 1];
-    
-    if (Platform.OS === 'android') {
-      // Android
-      formData.append('file', {
-        uri: file.uri,
-        type: file.mimeType || 'application/pdf',
-        name: fileName || file.name,
-      } as any);
-    } else {
-      // iOS
-      formData.append('file', {
-        uri: file.uri.replace('file://', ''),
-        type: file.mimeType || 'application/pdf',
-        name: fileName || file.name,
-      } as any);
-    }
+    return process.env.REACT_APP_ANALYTICS_API_BASE || 'http://localhost:3004/api/v1';
+  }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3004/api/v1';
+  }
+  return 'http://localhost:3004/api/v1';
+};
+
+const getNotificationApiBase = () => {
+  if (Platform.OS === 'web') {
+    return process.env.REACT_APP_NOTIFICATION_API_BASE || 'http://localhost:3005/api/v1';
+  }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3005/api/v1';
+  }
+  return 'http://localhost:3005/api/v1';
+};
+
+// Use different base URLs for each microservice
+const UPLOAD_API_BASE = getUploadApiBase();
+export const ANALYTICS_API_BASE = getAnalyticsApiBase();
+export const NOTIFICATION_API_BASE = getNotificationApiBase();
+
+export const uploadDocumentApi = async (file: any, token?: string) => {
+  // Derive common file metadata across platforms
+  const isWeb = Platform.OS === 'web';
+
+  const fileName: string | undefined = isWeb
+    ? file?.name
+    : file?.name || file?.uri?.split('/')?.pop();
+
+  const fileSize: number | undefined = isWeb ? file?.size : file?.size;
+
+  const contentType: string = isWeb
+    ? file?.type || 'application/pdf'
+    : file?.mimeType || 'application/pdf';
+
+  if (!fileName || typeof fileSize !== 'number') {
+    throw new Error('Invalid file metadata: missing name or size');
+  }
+
+  if (!contentType || contentType !== 'application/pdf') {
+    throw new Error('Only PDF documents are supported');
+  }
+
+  // Optional: enforce a hard size limit (10MB)
+  const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+  if (fileSize > MAX_SIZE_BYTES) {
+    throw new Error('File size exceeds 10MB limit');
   }
 
   try {
-    const res = await fetch(`${UPLOAD_API_BASE}/upload`, {
-      method: 'POST',
-      body: formData,
-      // Don't set Content-Type header for FormData - browser/fetch will set it automatically
-    });
+    // 1) Ask backend for a presigned URL
+    const presignResponse: any = await getPresignedUrlApi(
+      {
+        fileName,
+        contentType,
+        fileSize,
+      },
+      token
+    );
+  const uploadUrl: string =
+      presignResponse?.data?.uploadUrl || presignResponse?.url || presignResponse?.presignedUrl;
+    const documentId: string | undefined = presignResponse?.data?.documentId;
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Upload failed: ${res.status} ${res.statusText} - ${errorText}`);
+    if (!uploadUrl || !documentId) {
+      throw new Error('Invalid presigned URL response from server');
     }
-    return res.json();
+
+    // 2) Upload the raw file bytes directly to S3 using the presigned URL
+    if (isWeb) {
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: file,
+      });
+
+      if (!putRes.ok) {
+        const errorText = await putRes.text();
+        throw new Error(`S3 upload failed: ${putRes.status} ${putRes.statusText} - ${errorText}`);
+      }
+    } else {
+      // React Native: fetch the local file and convert to Blob for upload
+      const fileResponse = await fetch(file.uri);
+      const blob = await fileResponse.blob();
+
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: blob,
+      });
+
+      if (!putRes.ok) {
+        const errorText = await putRes.text();
+        throw new Error(`S3 upload failed: ${putRes.status} ${putRes.statusText} - ${errorText}`);
+      }
+    }
+
+    // 3) Notify backend that the upload is complete so it can start processing
+    const confirmResponse = await confirmUploadApi(documentId, token);
+    return confirmResponse;
   } catch (error: any) {
     console.error('Upload API Error:', {
       message: error?.message,
@@ -112,4 +173,88 @@ export const uploadDocumentApi = async (file: any) => {
     });
     throw error;
   }
+};
+
+// Helper function to get with auth token
+const getWithAuth = async (url: string, token?: string) => {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+  }
+  return res.json();
+};
+
+// Helper function to post with auth token
+const postWithAuth = async (url: string, body: any, token?: string) => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+  }
+  return res.json();
+};
+
+// Upload Service APIs
+export const getPresignedUrlApi = async (
+  payload: { fileName: string; contentType: string; fileSize: number },
+  token?: string
+) => {
+  return postWithAuth(`${UPLOAD_API_BASE}/upload/presigned-url`, payload, token);
+};
+
+export const confirmUploadApi = async (documentId: string, token?: string) => {
+  return postWithAuth(`${UPLOAD_API_BASE}/upload/confirm`, { documentId }, token);
+};
+
+export const pollDocumentStatusApi = async (documentId: string, token?: string) => {
+  return getWithAuth(`${UPLOAD_API_BASE}/upload/documents/${documentId}/status`, token);
+};
+
+export const listDocumentsApi = async (token?: string) => {
+  return getWithAuth(`${UPLOAD_API_BASE}/upload/documents`, token);
+};
+
+// Analytics Service APIs
+export const getDashboardApi = async (token?: string) => {
+  return getWithAuth(`${ANALYTICS_API_BASE}/analytics/dashboard`, token);
+};
+
+export const getCategoriesApi = async (token?: string) => {
+  return getWithAuth(`${ANALYTICS_API_BASE}/analytics/categories`, token);
+};
+
+export const getTransactionsApi = async (category?: string, token?: string) => {
+  const url = category 
+    ? `${ANALYTICS_API_BASE}/analytics/transactions?category=${category}`
+    : `${ANALYTICS_API_BASE}/analytics/transactions`;
+  return getWithAuth(url, token);
+};
+
+export const sendChatMessageApi = async (message: string, token?: string) => {
+  return postWithAuth(`${ANALYTICS_API_BASE}/chat`, { message }, token);
+};
+
+// Notification Service APIs
+export const getDocumentStatusStreamUrl = (documentId: string) => {
+  return `${NOTIFICATION_API_BASE}/notifications/documents/${documentId}/status-stream`;
 };

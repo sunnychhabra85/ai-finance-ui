@@ -1,4 +1,14 @@
 /* =========================================================
+   STATIC/MOCK DATA - COMMENTED OUT - NOW USING REAL APIs
+   This file contains mock data that was used before API integration.
+   All screens now use real API endpoints:
+   - useDashboard() for financial summary
+   - useApiTransactions() for transactions
+   - useDocuments() for upload history
+   - sendChatMessageApi() for chat messages
+========================================================= */
+
+/* =========================================================
    Types (can later be moved to /types folder)
 ========================================================= */
 
@@ -33,8 +43,10 @@ export type FinancialSummary = {
 
 /* =========================================================
    Transactions (matches Transactions screen exactly)
+   NOW REPLACED BY: useApiTransactions() hook
 ========================================================= */
 
+/* COMMENTED OUT - Using API
 export const mockTransactions: Transaction[] = [
   {
     id: "1",
@@ -87,11 +99,14 @@ export const mockTransactions: Transaction[] = [
     category: "Bills",
   },
 ];
+*/
 
 /* =========================================================
    Financial Overview & Insights (Overview screen)
+   NOW REPLACED BY: useDashboard() hook
 ========================================================= */
 
+/* COMMENTED OUT - Using API
 export const mockSummary: FinancialSummary = {
   totalDebit: 3240,
   totalCredit: 5350,
@@ -116,22 +131,28 @@ export const mockSummary: FinancialSummary = {
     { label: "Entertainment", value: 150 },
   ],
 };
+*/
 
 /* =========================================================
    AI Chat Suggested Prompts (AI Chat screen)
+   NOW IMPLEMENTED IN: ChatChips component
 ========================================================= */
 
+/* COMMENTED OUT - Using API
 export const mockAiPrompts = [
   "Where am I spending most?",
   "Why was last month expensive?",
   "How can I reduce food expenses?",
   "Show me travel spending trends",
 ];
+*/
 
 /* =========================================================
    Upload History (Upload screen)
+   NOW REPLACED BY: useDocuments() hook
 ========================================================= */
 
+/* COMMENTED OUT - Using API
 export const mockUploads = [
   {
     id: "1",
@@ -148,3 +169,4 @@ export const mockUploads = [
     status: "Done",
   },
 ];
+*/

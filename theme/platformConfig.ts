@@ -42,27 +42,39 @@ export const platformConfig = {
 
   // Shadows - web and mobile compatible
   shadows: {
-    light: {
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
-    },
-    medium: {
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 4,
-    },
-    heavy: {
-      shadowColor: '#000',
-      shadowOpacity: 0.12,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 8,
-    },
+    light: Platform.OS === 'web'
+      ? {
+          boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.05)',
+        }
+      : {
+          shadowColor: '#000',
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        },
+    medium: Platform.OS === 'web'
+      ? {
+          boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.08)',
+        }
+      : {
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 4,
+        },
+    heavy: Platform.OS === 'web'
+      ? {
+          boxShadow: '0 8px 20px 0 rgba(0, 0, 0, 0.12)',
+        }
+      : {
+          shadowColor: '#000',
+          shadowOpacity: 0.12,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 8,
+        },
   },
 };
 

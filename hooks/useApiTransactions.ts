@@ -11,9 +11,10 @@ export interface ApiTransaction {
   description?: string;
 }
 
-export const useApiTransactions = (category?: string) => {
+export const useApiTransactions = () => {
   const token = useAuthStore((s) => s.token);
   const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +24,32 @@ export const useApiTransactions = (category?: string) => {
       setError(null);
       
       const response = await getTransactionsApi(
-        category !== 'All' ? category : undefined,
+        undefined,
         token || undefined
       );
-      // Extract transactions from response
+      // Extract transactions from response - handle both formats
       const txns = response.data?.items || response.transactions || [];
-      setTransactions(txns);
+      
+      // Ensure amount is a number
+      const normalizedTxns = txns.map((txn: any) => ({
+        ...txn,
+        amount: typeof txn.amount === 'string' ? Number(txn.amount) : txn.amount
+      }));
+      
+      // Extract unique categories from transactions
+      const uniqueCategories = Array.from(
+        new Set(normalizedTxns.map((txn: ApiTransaction) => txn.category).filter(Boolean))
+      ) as string[];
+      
+      setTransactions(normalizedTxns);
+      setCategories(uniqueCategories);
     } catch (err: any) {
       console.error('Transactions fetch error:', err);
       setError(err.message || 'Failed to load transactions');
+      
+      // Set empty array on error
+      setTransactions([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -41,7 +59,7 @@ export const useApiTransactions = (category?: string) => {
     if (token) {
       fetchTransactions();
     }
-  }, [token, category]);
+  }, [token]);
 
-  return { transactions, loading, error, refetch: fetchTransactions };
+  return { transactions, categories, loading, error, refetch: fetchTransactions };
 };

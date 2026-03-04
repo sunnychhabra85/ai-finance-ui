@@ -33,7 +33,7 @@ export const AppInput = ({
         />
       </View>
 
-      {error && <Text style={[styles.errorText, { fontSize: getAdaptiveFontSize(12, width) }]}>{error}</Text>}
+      {!!error && <Text style={[styles.errorText, { fontSize: getAdaptiveFontSize(12, width) }]}>{error}</Text>}
     </View>
   );
 };

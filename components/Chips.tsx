@@ -1,10 +1,14 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../theme/colors";
 
-const items = ["All", "Food", "Travel", "Bills", "Income"];
+interface ChipsProps {
+  selected: string;
+  onSelect: (category: string) => void;
+  categories?: string[];
+}
 
-export const Chips = ({ selected, onSelect }: any) => {
-  const items = ["All", "Food", "Travel", "Bills", "Income"];
+export const Chips = ({ selected, onSelect, categories = [] }: ChipsProps) => {
+  const items = ["All", ...categories];
 
   return (
     <View style={styles.row}>
