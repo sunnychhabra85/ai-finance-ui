@@ -1,58 +1,70 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useDashboard } from "../hooks/useDashboard";
 import { Card } from "./Card";
 import { Donut } from "./Donut";
 import { InsightMiniCard } from "./InsightMiniCard";
 import { MonthlyTrend } from "./MonthlyTrend";
 
 export const InsightsBlock = () => {
+    const { data, loading } = useDashboard();
+
+    if (loading) {
+        return <ActivityIndicator size="large" color="#2563EB" />;
+    }
+
     return (
         <>
-            {/* Horizontal insight cards */}
+            {/* Horizontal insight cards - Real Data from API */}
             <View style={styles.horizontalScrollContainer}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
                 >
-                    <View style={styles.insightCard}>
-                        <InsightMiniCard
-                            title="Highest Spending Month"
-                            value="June"
-                            sub="$3,500 spent"
-                            borderColor="#FB923C"
-                        />
-                    </View>
-                    <View style={styles.insightCard}>
-                        <InsightMiniCard
-                            title="Top Category"
-                            value="Food"
-                            sub="25% of total spend"
-                            borderColor="#3B82F6"
-                        />
-                    </View>
-                    <View style={styles.insightCard}>
-                        <InsightMiniCard
-                            title="Top Category"
-                            value="Food"
-                            sub="25% of total spend"
-                            borderColor="#3B82F6"
-                        />
-                    </View>
+                    {data?.highestSpendingMonth && (
+                        <View style={styles.insightCard}>
+                            <InsightMiniCard
+                                title="Highest Spending Month"
+                                value={data.highestSpendingMonth.month}
+                                sub={`$${data.highestSpendingMonth.amount.toLocaleString()} spent`}
+                                borderColor="#FB923C"
+                            />
+                        </View>
+                    )}
+                    {data?.topCategory && (
+                        <View style={styles.insightCard}>
+                            <InsightMiniCard
+                                title="Top Category"
+                                value={data.topCategory.name}
+                                sub={`${data.topCategory.percentage}% of total spend`}
+                                borderColor="#3B82F6"
+                            />
+                        </View>
+                    )}
                 </ScrollView>
             </View>
 
+            {/* STATIC DATA WAS HERE - Now using API data from useDashboard() */}
 
-            {/* Donut block */}
+            {/* Donut block - Real Data from API */}
             <Card>
                 <Text style={styles.heading}>Spending by Category</Text>
                 <Donut />
                 <View style={styles.labels}>
-                    {["Food", "Travel", "Shopping", "Bills", "Entertainment"].map(
-                        (l) => (
-                            <Text key={l} style={styles.label}>
-                                {l}
+                    {data?.categories && data.categories.length > 0 ? (
+                        data.categories.map((cat) => (
+                            <Text key={cat.name} style={styles.label}>
+                                {cat.name}
                             </Text>
+                        ))
+                    ) : (
+                        ["Food", "Travel", "Shopping", "Bills", "Entertainment"].map(
+                            (l) => (
+                                <Text key={l} style={styles.label}>
+                                    {l}
+                                </Text>
+                            )
                         )
                     )}
                 </View>

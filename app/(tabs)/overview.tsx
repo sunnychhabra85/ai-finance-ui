@@ -1,30 +1,43 @@
 import React, { useState } from "react";
 import {
-    ScrollView,
+    ActivityIndicator,
     StyleSheet,
-    View
+    Text,
+    View,
+    useWindowDimensions
 } from "react-native";
 
 import { Chips } from "../../components/Chips";
 import { InsightsBlock } from "../../components/InsightsBlock";
+import { ResponsiveContainer } from "../../components/ResponsiveContainer";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { SearchBar } from "../../components/SearchBar";
 import { Segment } from "../../components/Segment";
 import { SummaryCards } from "../../components/SummaryCards";
 import { TransactionItem } from "../../components/TransactionItem";
-import type { Category } from "../../data/transactions";
-import { useTransactions } from "../../hooks/useTransactions";
+import { useApiTransactions } from "../../hooks/useApiTransactions";
 import { useAuthStore } from "../../store/authStore";
 import { colors } from "../../theme/colors";
+import { getAdaptivePadding } from "../../utils/responsive";
 
 export default function Overview() {
     const [tab, setTab] = useState("Transactions");
     const logout = useAuthStore((s) => s.logout);
     const [search, setSearch] = useState("");
-    // Import Category type if not already imported
-    // import type { Category } from "../../types/Category";
-    const [category, setCategory] = useState<Category | "All">("All");
+    const { width } = useWindowDimensions();
+    const [category, setCategory] = useState<string>("All");
+    const padding = getAdaptivePadding(width);
 
+    // Use real API transactions instead of static data
+    // Always fetch ALL transactions to get all categories for chips
+    const { transactions, categories, loading, error } = useApiTransactions();
+    
+    
+    // Filter by category and search term on the client side
+    const filtered = transactions
+        .filter((t) => category === 'All' || t.category === category)
+        .filter((t) => t.description?.toLowerCase().includes(search.toLowerCase()));
+    /* STATIC DATA - COMMENTED OUT - Using API instead
     const filtered = useTransactions(search, category);
 
     const DATA = [
@@ -34,33 +47,18 @@ export default function Overview() {
         { id: "4", title: "Salary Deposit", date: "2024-05-22", amount: "+$4500.00" },
         { id: "5", title: "Starbucks Coffee", date: "2024-05-21", amount: "-$6.75" },
     ];
+    */
 
     return (
-        <ScrollView
-            style={styles.container}
-            contentContainerStyle={{ paddingBottom: 140 }}
-            showsVerticalScrollIndicator={false}
-        >
+        <ResponsiveContainer style={{ backgroundColor: colors.background, paddingHorizontal: padding }}>
             {/* Header with logout */}
             <View style={styles.headerRow}>
                 <View>
-                    {/* <Text style={styles.title}>Financial Overview</Text>
-          <Text style={styles.subtitle}>Your transactions & insights</Text> */}
                     <ScreenHeader
                         title="Financial Overview"
                         subtitle="Your transactions & insights"
                     />
-
                 </View>
-
-                {/* <TouchableOpacity
-          onPress={() => {
-            logout();
-            router.replace("/");
-          }}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#64748B" />
-        </TouchableOpacity> */}
             </View>
 
             <SummaryCards />
@@ -69,38 +67,39 @@ export default function Overview() {
             {tab === "Transactions" ? (
                 <>
                     <SearchBar value={search} onChange={setSearch} />
-                    <Chips selected={category} onSelect={setCategory} />
-                    {filtered.map((item) => (
-                        <TransactionItem
-                            key={item.id}
-                            title={item.title}
-                            date={item.date}
-                            amount={
-                                item.amount > 0
-                                    ? `+$${item.amount.toFixed(2)}`
-                                    : `-$${Math.abs(item.amount).toFixed(2)}`
-                            }
-                        />
-                    ))}
+                    <Chips selected={category} onSelect={setCategory} categories={categories} />
+                    
+                    {loading && <ActivityIndicator size="large" color="#2563EB" />}
+                    
+                    {error && <Text style={{ color: 'red', padding: 10 }}>Error: {error}</Text>}
+                    
+                    {!loading && !error && filtered.map((item) => {
+                        const amount = Number(item.amount);
+                        return (
+                            <TransactionItem
+                                key={item.id}
+                                title={item.description?.slice(0, 20) + "..." || "No description"}
+                                date={item.date.split("T")[0]} // Show only date part
+                                amount={
+                                    amount > 0
+                                        ? `${amount.toFixed(2)}`
+                                        : `-${Math.abs(amount).toFixed(2)}`
+                                }
+                            />
+                        );
+                    })}
                 </>
             ) : (
                 <InsightsBlock />
             )}
-        </ScrollView>
+        </ResponsiveContainer>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background,
-        padding: 24,
-    },
     headerRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
     },
-    title: { fontSize: 26, fontWeight: "700" },
-    subtitle: { color: "#64748B", marginTop: 4 },
 });

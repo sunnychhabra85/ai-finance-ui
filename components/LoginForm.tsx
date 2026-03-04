@@ -21,10 +21,8 @@ export const LoginForm = () => {
   const handleLogin = async () => {
   try {
     const res = await loginApi(email, password);
-    console.log('LOGIN RES:', res);
-    console.log('TOKEN:', res.access_token);
 
-    login(res.access_token, res.user ?? true); // pass user for redirect
+    login(res.data.tokens.accessToken, res.data.user ?? true); // pass user for redirect
     router.replace('/(tabs)/overview');
   } catch (e) {
     Alert.alert('Login failed');
@@ -40,7 +38,7 @@ export const LoginForm = () => {
           placeholder="john@example.com"
           value={email}
           onChangeText={setEmail}
-          error={touched && !isEmailValid(email) ? "Enter valid email" : ""}
+          error={touched && !isEmailValid(email) ? "Enter valid email" : undefined}
         />
 
         <AppInput
@@ -53,7 +51,7 @@ export const LoginForm = () => {
           error={
             touched && !isPasswordValid(password)
               ? "Minimum 6 characters"
-              : ""
+              : undefined
           }
         />
 
@@ -69,8 +67,6 @@ export const LoginForm = () => {
           disabled={!isValid}
         />
       </Card>
-
-     
     </>
   );
 };

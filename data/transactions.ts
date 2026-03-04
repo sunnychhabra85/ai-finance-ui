@@ -1,3 +1,9 @@
+/* =========================================================
+   STATIC DATA - COMMENTED OUT - NOW USING REAL API
+   This file contains static transaction data.
+   Now replaced by useApiTransactions() hook from API.
+========================================================= */
+
 export type Category = "Food" | "Travel" | "Bills" | "Income";
 
 export interface Transaction {
@@ -8,6 +14,7 @@ export interface Transaction {
   category: Category;
 }
 
+/* COMMENTED OUT - Using API
 export const TRANSACTIONS: Transaction[] = [
   {
     id: "1",
@@ -45,3 +52,4 @@ export const TRANSACTIONS: Transaction[] = [
     category: "Food",
   },
 ];
+*/

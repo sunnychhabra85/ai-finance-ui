@@ -1,12 +1,92 @@
-import React from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useWindowDimensions
+} from "react-native";
 import { ChatBubble } from "../../components/ChatBubble";
 import { ChatChips } from "../../components/ChatChips";
-import { colors } from "../../theme/colors";
+import { ResponsiveContainer } from "../../components/ResponsiveContainer";
+import { sendChatMessageApi } from "../../services/api";
+import { useAuthStore } from "../../store/authStore";
+import { getAdaptivePadding } from "../../utils/responsive";
+
+interface Message {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
 
 export default function Chat() {
+  const { width } = useWindowDimensions();
+  const padding = getAdaptivePadding(width);
+  const token = useAuthStore((s) => s.token);
+
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      text: "Hi! I'm your personal spending assistant. Ask me anything about your finances!",
+      isUser: false,
+      timestamp: new Date(),
+    }
+  ]);
+  const [inputText, setInputText] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!inputText.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: inputText.trim(),
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputText("");
+    setLoading(true);
+
+    try {
+      const response = await sendChatMessageApi(userMessage.text, token || undefined);
+
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response.data?.message || response.message || "I'm processing your request...",
+        isUser: false,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, botResponse]);
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I'm having trouble responding right now. Please try again.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChipPress = (prompt: string) => {
+    setInputText(prompt);
+  };
+
   return (
-    <View style={styles.container}>
+    <ResponsiveContainer contentContainerStyle={{ paddingHorizontal: padding, justifyContent: 'space-between' }}>
       {/* TOP CONTENT */}
       <View>
         <View style={styles.headerRow}>
@@ -17,36 +97,50 @@ export default function Chat() {
             <Text style={styles.title}>AI Assistant</Text>
             <Text style={styles.online}>● Online</Text>
           </View>
-          
         </View>
 
-        <ChatBubble text="Hi! I'm your personal spending assistant. Ask me anything about your finances!" />
+        <ScrollView style={styles.messagesContainer}>
+          {messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              text={msg.text}
+              isUser={msg.isUser}
+            />
+          ))}
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#2563EB" />
+              <Text style={styles.loadingText}>AI is thinking...</Text>
+            </View>
+          )}
+        </ScrollView>
       </View>
 
       {/* BOTTOM AREA */}
       <View style={styles.bottomArea}>
-        <ChatChips />
+        <ChatChips onChipPress={handleChipPress} />
 
         <View style={styles.inputBar}>
           <TextInput
             placeholder="Ask about your spending..."
             style={{ flex: 1 }}
+            value={inputText}
+            onChangeText={setInputText}
+            onSubmitEditing={handleSend}
+            editable={!loading}
           />
-          <Text style={styles.send}>➤</Text>
+          <TouchableOpacity onPress={handleSend} disabled={loading || !inputText.trim()}>
+            <Text style={[styles.send, (!inputText.trim() || loading) && styles.sendDisabled]}>
+              ➤
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: colors.background,
-    justifyContent: "space-between",
-  },
-
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -88,9 +182,26 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
+  messagesContainer: {
+    marginVertical: 16,
+    maxHeight: 400,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+  },
+  loadingText: {
+    color: '#64748B',
+    fontSize: 13,
+  },
   send: {
     color: "#2563EB",
     fontSize: 18,
     marginLeft: 10,
+  },
+  sendDisabled: {
+    opacity: 0.3,
   },
 });

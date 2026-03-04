@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { colors } from "../theme/colors";
+import { getAdaptiveFontSize, getAdaptivePadding } from "../utils/responsive";
 
 export const AppInput = ({
   label,
@@ -9,11 +10,14 @@ export const AppInput = ({
   error,
   ...props
 }: any) => {
+  const { width } = useWindowDimensions();
+  const padding = getAdaptivePadding(width);
+
   return (
     <View style={{ marginTop: 16 }}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { fontSize: getAdaptiveFontSize(14, width) }]}>{label}</Text>}
 
-      <View style={[styles.container, error && styles.errorBorder]}>
+      <View style={[styles.container, error && styles.errorBorder, { paddingHorizontal: padding / 2 }]}>
         {icon && (
           <Ionicons
             name={icon}
@@ -24,12 +28,12 @@ export const AppInput = ({
         )}
         <TextInput
           placeholderTextColor={colors.textLight}
-          style={styles.input}
+          style={[styles.input, { fontSize: getAdaptiveFontSize(16, width) }]}
           {...props}
         />
       </View>
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {!!error && <Text style={[styles.errorText, { fontSize: getAdaptiveFontSize(12, width) }]}>{error}</Text>}
     </View>
   );
 };

@@ -17,15 +17,15 @@ export const RegisterForm = () => {
   const login = useAuthStore((s) => s.login);
 
   const nameError =
-    touched && name.length < 3 ? "Enter your full name" : "";
+    touched && name.length < 3 ? "Enter your full name" : undefined;
 
   const emailError =
-    touched && !isEmailValid(email) ? "Enter valid email" : "";
+    touched && !isEmailValid(email) ? "Enter valid email" : undefined;
 
   const passError =
     touched && !isPasswordValid(password)
       ? "Password must be at least 6 characters"
-      : "";
+      : undefined;
 
   const isValid =
     name.length >= 3 &&
@@ -34,7 +34,7 @@ export const RegisterForm = () => {
 
   const handleRegister = async () => {
   try {
-    const res = await registerApi(email, password);
+    const res = await registerApi(email, password, name);
     login(res.access_token);
     router.replace('/(tabs)/overview');
   } catch (e) {

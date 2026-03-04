@@ -1,22 +1,43 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export const ChatChips = () => (
-  <View style={styles.row}>
-    <TouchableOpacity style={styles.chip}>
-      <Text style={styles.text}>Where am I spending most?</Text>
-    </TouchableOpacity>
+interface ChatChipsProps {
+  onChipPress?: (prompt: string) => void;
+}
 
-    <TouchableOpacity style={styles.chip}>
-      <Text style={styles.text}>Why was last month expensive?</Text>
-    </TouchableOpacity>
-  </View>
+const PROMPTS = [
+  "Where am I spending most?",
+  "Why was last month expensive?",
+  "Show me food expenses",
+  "Compare to previous month",
+];
+
+export const ChatChips = ({ onChipPress }: ChatChipsProps) => (
+  <ScrollView 
+    horizontal 
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={styles.scrollContent}
+  >
+    <View style={styles.row}>
+      {PROMPTS.map((prompt, idx) => (
+        <TouchableOpacity 
+          key={idx} 
+          style={styles.chip}
+          onPress={() => onChipPress?.(prompt)}
+        >
+          <Text style={styles.text}>{prompt}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </ScrollView>
 );
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingVertical: 8,
+  },
   row: {
     flexDirection: "row",
     gap: 10,
-    marginVertical: 16,
   },
   chip: {
     borderWidth: 1,
