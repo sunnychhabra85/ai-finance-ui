@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import { LoginForm } from "../../components/LoginForm";
 import { RegisterForm } from "../../components/RegisterForm";
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   switch: {
     textAlign: "center",
-    marginTop: 20,
+    marginTop: 5,
     color: colors.textLight,
   },
   logoText: {
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     fontSize: 13,
     position: "absolute",
-    bottom: 50,
+    bottom: 20,
     left: 0,
     right: 0,
   },
