@@ -9,17 +9,20 @@ import { Platform } from 'react-native';
 // For physical devices, replace these with your computer's local network IP
 const DEVICE_IP = process.env.EXPO_PUBLIC_API_HOST || '10.0.2.2'; // Change to your IP (e.g., '192.168.1.100')
 
+// Single API Gateway base URL
 const getApiBase = () => {
   const platformOS = Platform.OS;
   
   if (platformOS === 'web') {
-    return process.env.REACT_APP_API_BASE || 'http://localhost:3001/api/v1';
+    return process.env.REACT_APP_API_BASE || 'http://localhost:3000/api/v1';
+    //return process.env.REACT_APP_API_BASE || 'http://3.89.88.81/api/v1';
   }
   // For Android/iOS, use DEVICE_IP which works for both emulator (10.0.2.2) and physical devices
   if (platformOS === 'android' || platformOS === 'ios') {
-    return `http://${DEVICE_IP}:3001/api/v1`;
+    return `http://${DEVICE_IP}:3000/api/v1`;
   }
-  return 'http://localhost:3001/api/v1';
+  // return 'http://localhost/api/v1';
+  //return 'http://3.89.88.81/api/v1';
 };
 
 export const API_BASE = getApiBase();
@@ -77,49 +80,17 @@ export const apiPost = async (url: string, body: any) => {
   }
 };
 
-const getUploadApiBase = () => {
-  if (Platform.OS === 'web') {
-    return process.env.REACT_APP_UPLOAD_API_BASE || 'http://localhost:3002/api/v1';
-  }
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    return `http://${DEVICE_IP}:3002/api/v1`;
-  }
-  return 'http://localhost:3002/api/v1';
-};
-
-const getAnalyticsApiBase = () => {
-  if (Platform.OS === 'web') {
-    return process.env.REACT_APP_ANALYTICS_API_BASE || 'http://localhost:3004/api/v1';
-  }
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    return `http://${DEVICE_IP}:3004/api/v1`;
-  }
-  return 'http://localhost:3004/api/v1';
-};
-
-const getNotificationApiBase = () => {
-  if (Platform.OS === 'web') {
-    return process.env.REACT_APP_NOTIFICATION_API_BASE || 'http://localhost:3005/api/v1';
-  }
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    return `http://${DEVICE_IP}:3005/api/v1`;
-  }
-  return 'http://localhost:3005/api/v1';
-};
-
-// Use different base URLs for each microservice
-const UPLOAD_API_BASE = getUploadApiBase();
-export const ANALYTICS_API_BASE = getAnalyticsApiBase();
-export const NOTIFICATION_API_BASE = getNotificationApiBase();
+// All services now use the same API Gateway base URL
+// The gateway will route requests to appropriate microservices based on the path
+export const UPLOAD_API_BASE = API_BASE;
+export const ANALYTICS_API_BASE = API_BASE;
+export const NOTIFICATION_API_BASE = API_BASE;
 
 // Log API configuration for debugging
 console.log('🌐 API Configuration:', {
   platform: Platform.OS,
   deviceIP: DEVICE_IP,
-  authAPI: API_BASE,
-  uploadAPI: UPLOAD_API_BASE,
-  analyticsAPI: ANALYTICS_API_BASE,
-  notificationAPI: NOTIFICATION_API_BASE,
+  apiGateway: API_BASE,
 });
 
 export const uploadDocumentApi = async (file: any, token?: string) => {
@@ -130,17 +101,43 @@ export const uploadDocumentApi = async (file: any, token?: string) => {
     ? file?.name
     : file?.name || file?.uri?.split('/')?.pop();
 
-  const fileSize: number | undefined = isWeb ? file?.size : file?.size;
+  let nativeBlob: Blob | null = null;
+  const rawSize: number | undefined = isWeb ? file?.size : file?.size;
+  let fileSize: number | undefined =
+    typeof rawSize === 'number' && Number.isFinite(rawSize) ? rawSize : undefined;
 
-  const contentType: string = isWeb
-    ? file?.type || 'application/pdf'
-    : file?.mimeType || 'application/pdf';
+  // Android document picker may return missing size; derive it from the picked URI.
+  if (!isWeb && (!fileSize || fileSize <= 0) && file?.uri) {
+    try {
+      const fileResponse = await fetch(file.uri);
+      nativeBlob = await fileResponse.blob();
+      fileSize = nativeBlob.size;
+    } catch (sizeError) {
+      console.warn('⚠️ Could not resolve native file size from URI:', {
+        uri: file?.uri,
+        error: String(sizeError),
+      });
+    }
+  }
 
-  if (!fileName || typeof fileSize !== 'number') {
+  const rawContentType: string = isWeb
+    ? file?.type || ''
+    : file?.mimeType || file?.type || '';
+
+  // Accept PDF mime variants coming from Android content providers.
+  const looksLikePdf =
+    /pdf/i.test(rawContentType || '') ||
+    /\.pdf$/i.test(fileName || '');
+
+  const contentType: string = looksLikePdf
+    ? 'application/pdf'
+    : rawContentType || 'application/octet-stream';
+
+  if (!fileName || typeof fileSize !== 'number' || fileSize <= 0) {
     throw new Error('Invalid file metadata: missing name or size');
   }
 
-  if (!contentType || contentType !== 'application/pdf') {
+  if (!looksLikePdf) {
     throw new Error('Only PDF documents are supported');
   }
 
@@ -183,9 +180,8 @@ export const uploadDocumentApi = async (file: any, token?: string) => {
         throw new Error(`S3 upload failed: ${putRes.status} ${putRes.statusText} - ${errorText}`);
       }
     } else {
-      // React Native: fetch the local file and convert to Blob for upload
-      const fileResponse = await fetch(file.uri);
-      const blob = await fileResponse.blob();
+      // React Native: use the already-read blob when size probing happened, else read now.
+      const blob = nativeBlob || (await (await fetch(file.uri)).blob());
 
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
@@ -216,8 +212,12 @@ export const uploadDocumentApi = async (file: any, token?: string) => {
 
 // Helper function to get with auth token
 const getWithAuth = async (url: string, token?: string) => {
-  console.log('🚀 Making GET request:', { url, hasToken: !!token });
-  
+  console.log('🚀 Making GET request:', {
+    url,
+    hasToken: !!token,
+    tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+  });
+
   const headers: Record<string, string> = {};
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -241,6 +241,11 @@ const getWithAuth = async (url: string, token?: string) => {
 
     if (!res.ok) {
       const errorText = await res.text();
+      console.error('❌ Server Error Response:', {
+        status: res.status,
+        statusText: res.statusText,
+        serverResponse: errorText,
+      });
       throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
     }
     return res.json();
@@ -249,14 +254,20 @@ const getWithAuth = async (url: string, token?: string) => {
       console.error('❌ GET request aborted:', url);
       throw new Error(`Backend not responding at ${url}. Is your backend service running?`);
     }
+    console.error('❌ GET Error:', { message: error.message, url });
     throw error;
   }
 };
 
 // Helper function to post with auth token
 const postWithAuth = async (url: string, body: any, token?: string) => {
-  console.log('🚀 Making POST request:', { url, hasToken: !!token });
-  
+  console.log('🚀 Making POST request:', {
+    url,
+    hasToken: !!token,
+    tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+    bodyKeys: body ? Object.keys(body) : [],
+  });
+
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -281,6 +292,11 @@ const postWithAuth = async (url: string, body: any, token?: string) => {
 
     if (!res.ok) {
       const errorText = await res.text();
+      console.error('❌ Server Error Response:', {
+        status: res.status,
+        statusText: res.statusText,
+        serverResponse: errorText,
+      });
       throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
     }
     return res.json();
@@ -289,10 +305,10 @@ const postWithAuth = async (url: string, body: any, token?: string) => {
       console.error('❌ POST request aborted:', url);
       throw new Error(`Backend not responding at ${url}. Is your backend service running?`);
     }
+    console.error('❌ POST Error:', { message: error.message, url });
     throw error;
   }
 };
-
 // Upload Service APIs
 export const getPresignedUrlApi = async (
   payload: { fileName: string; contentType: string; fileSize: number },

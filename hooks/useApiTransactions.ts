@@ -58,7 +58,13 @@ export const useApiTransactions = () => {
   useEffect(() => {
     if (token) {
       fetchTransactions();
+      return;
     }
+
+    setLoading(false);
+    setError(null);
+    setTransactions([]);
+    setCategories([]);
   }, [token]);
 
   return { transactions, categories, loading, error, refetch: fetchTransactions };

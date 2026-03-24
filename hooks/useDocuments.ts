@@ -6,10 +6,17 @@ export interface Document {
   id: string;
   fileName: string;
   fileSize: number;
-  status: 'PENDING_UPLOAD' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: string;
   updatedAt: string;
   processingCompletedAt?: string;
 }
+
+const toNumber = (value: any) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const normalizeStatus = (value: any) => String(value || 'UNKNOWN').trim().toUpperCase();
 
 export const useDocuments = () => {
   const token = useAuthStore((s) => s.token);
@@ -23,7 +30,28 @@ export const useDocuments = () => {
       setError(null);
       
       const response = await listDocumentsApi(token || undefined);
-      const docs = response.data?.items || response.documents || [];
+      const rawDocs =
+        response.data?.items ||
+        response.data?.documents ||
+        response.items ||
+        response.documents ||
+        [];
+
+      const docs: Document[] = (Array.isArray(rawDocs) ? rawDocs : []).map((doc: any) => ({
+        id: String(doc?.id || doc?.documentId || doc?._id || ''),
+        fileName: String(
+          doc?.fileName || doc?.filename || doc?.name || doc?.originalName || 'Unknown.pdf'
+        ),
+        fileSize: toNumber(doc?.fileSize ?? doc?.size ?? doc?.file_size),
+        status: normalizeStatus(doc?.status || doc?.processingStatus || doc?.documentStatus),
+        updatedAt:
+          doc?.updatedAt ||
+          doc?.updated_at ||
+          doc?.processingCompletedAt ||
+          doc?.createdAt ||
+          new Date().toISOString(),
+        processingCompletedAt: doc?.processingCompletedAt,
+      }));
       
       console.log('� Documents API Response:', {
         raw: response,

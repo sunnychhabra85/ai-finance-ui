@@ -10,6 +10,7 @@ interface ResponsiveContainerProps extends ScrollViewProps {
 export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
   children,
   maxWidth = 414, // Mobile width (iPhone 12/13)
+  style,
   contentContainerStyle,
   ...props
 }) => {
@@ -29,6 +30,7 @@ export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
       <ScrollView
         style={[
           styles.container,
+          style,
           isWeb && { 
             width: containerWidth,
             alignSelf: alignSelf,
@@ -45,7 +47,6 @@ export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
           contentContainerStyle,
         ]}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={!isWeb} // Disable scroll indicator on web for cleaner look
         {...props}
       >
         {children}

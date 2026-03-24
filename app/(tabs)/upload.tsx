@@ -20,6 +20,42 @@ import { useUploadStore } from "../../store/uploadStore";
 import { colors } from "../../theme/colors";
 import { getAdaptivePadding } from "../../utils/responsive";
 
+const PROCESSING_STATUSES = new Set([
+  'PROCESSING',
+  'PENDING_UPLOAD',
+  'UPLOADING',
+  'IN_PROGRESS',
+  'QUEUED',
+]);
+
+const DONE_STATUSES = new Set([
+  'COMPLETED',
+  'UPLOADED',
+  'DONE',
+  'SUCCESS',
+  'PARSED',
+  'PROCESSED',
+  'COMPLETED_SUCCESSFULLY',
+]);
+
+const TERMINAL_STATUSES = new Set([
+  ...DONE_STATUSES,
+  'FAILED',
+  'ERROR',
+  'CANCELLED',
+]);
+
+const normalizeDocumentStatus = (status: string) =>
+  String(status || 'UNKNOWN').trim().toUpperCase();
+
+const isProcessingStatus = (status: string) =>
+  PROCESSING_STATUSES.has(normalizeDocumentStatus(status));
+
+const isDoneStatus = (status: string) => {
+  const normalized = normalizeDocumentStatus(status);
+  return DONE_STATUSES.has(normalized) || TERMINAL_STATUSES.has(normalized);
+};
+
 export default function Upload() {
   const { uploads, addUpload, markDone } = useUploadStore();
   const token = useAuthStore((s) => s.token);
@@ -34,13 +70,13 @@ export default function Upload() {
   
   // Track if we're actively polling
   const hasProcessingDocs = documents.some(
-    doc => doc.status === 'PROCESSING' || doc.status === 'PENDING_UPLOAD'
+    (doc) => isProcessingStatus(doc.status)
   );
 
   // Auto-refresh when there are processing documents
   useEffect(() => {
     const processingDocs = documents.filter(
-      doc => doc.status === 'PROCESSING' || doc.status === 'PENDING_UPLOAD'
+      (doc) => isProcessingStatus(doc.status)
     );
     const hasProcessingDocs = processingDocs.length > 0;
 
@@ -130,6 +166,7 @@ export default function Upload() {
 
     const res = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",
+      copyToCacheDirectory: true,
     });
 
     if (res.canceled) return;
@@ -143,10 +180,12 @@ export default function Upload() {
 
     const id = Date.now().toString();
 
+    const nativeSize = typeof file.size === 'number' ? file.size : 0;
+
     addUpload({
       id,
       name: file.name,
-      size: `${(file.size! / 1024 / 1024).toFixed(1)} MB`,
+      size: nativeSize > 0 ? `${(nativeSize / 1024 / 1024).toFixed(1)} MB` : 'Unknown size',
       date: new Date().toLocaleDateString(),
       status: "processing",
     });
@@ -165,22 +204,17 @@ export default function Upload() {
   };
 
   const formatStatus = (status: string) => {
-    const statusMap: Record<string, 'processing' | 'done'> = {
-      'COMPLETED': 'done',
-      'UPLOADED': 'done',
-      'PROCESSING': 'processing',
-      'PENDING_UPLOAD': 'processing',
-      'FAILED': 'processing',
-    };
-    
-    const displayStatus = statusMap[status] || 'processing';
-    
-    // Only log if status is not in the map (unexpected status)
-    if (!statusMap[status]) {
+    const normalized = normalizeDocumentStatus(status);
+
+    if (isDoneStatus(normalized)) {
+      return 'done';
+    }
+
+    if (!isProcessingStatus(normalized)) {
       console.warn(`⚠️  Unknown document status: "${status}" - treating as processing`);
     }
-    
-    return displayStatus;
+
+    return 'processing';
   };
 
   return (

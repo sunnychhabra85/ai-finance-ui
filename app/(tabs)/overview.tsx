@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
     ActivityIndicator,
+    ScrollView,
     StyleSheet,
     Text,
     View,
@@ -50,56 +51,109 @@ export default function Overview() {
     */
 
     return (
-        <ResponsiveContainer style={{ backgroundColor: colors.background, paddingHorizontal: padding }}>
-            {/* Header with logout */}
-            <View style={styles.headerRow}>
-                <View>
-                    <ScreenHeader
-                        title="Financial Overview"
-                        subtitle="Your transactions & insights"
-                    />
+        <ResponsiveContainer
+            style={{ backgroundColor: colors.background, paddingHorizontal: padding }}
+            scrollEnabled={false}
+            contentContainerStyle={styles.containerContent}
+        >
+            {/* Fixed top section */}
+            <View>
+                <View style={styles.headerRow}>
+                    <View>
+                        <ScreenHeader
+                            title="Financial Overview"
+                            subtitle="Your transactions & insights"
+                        />
+                    </View>
                 </View>
+
+                <SummaryCards />
+                <Segment tab={tab} setTab={setTab} />
+
+                {tab === "Transactions" && (
+                    <>
+                        <SearchBar value={search} onChange={setSearch} />
+                        <Chips selected={category} onSelect={setCategory} categories={categories} />
+                    </>
+                )}
             </View>
 
-            <SummaryCards />
-            <Segment tab={tab} setTab={setTab} />
+            {/* Scrollable content section */}
+            <View style={styles.scrollSection}>
+                {tab === "Transactions" ? (
+                    <>
+                        {loading && (
+                            <View style={styles.centerState}>
+                                <ActivityIndicator size="large" color="#2563EB" />
+                            </View>
+                        )}
 
-            {tab === "Transactions" ? (
-                <>
-                    <SearchBar value={search} onChange={setSearch} />
-                    <Chips selected={category} onSelect={setCategory} categories={categories} />
-                    
-                    {loading && <ActivityIndicator size="large" color="#2563EB" />}
-                    
-                    {error && <Text style={{ color: 'red', padding: 10 }}>Error: {error}</Text>}
-                    
-                    {!loading && !error && filtered.map((item) => {
-                        const amount = Number(item.amount);
-                        return (
-                            <TransactionItem
-                                key={item.id}
-                                title={item.description?.slice(0, 20) + "..." || "No description"}
-                                date={item.date.split("T")[0]} // Show only date part
-                                amount={
-                                    amount > 0
-                                        ? `${amount.toFixed(2)}`
-                                        : `-${Math.abs(amount).toFixed(2)}`
-                                }
-                            />
-                        );
-                    })}
-                </>
-            ) : (
-                <InsightsBlock />
-            )}
+                        {error && <Text style={styles.errorText}>Error: {error}</Text>}
+
+                        {!loading && !error && (
+                            <ScrollView
+                                style={styles.transactionsScroll}
+                                contentContainerStyle={styles.transactionsContent}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                {filtered.map((item) => {
+                                    const amount = Number(item.amount);
+                                    return (
+                                        <TransactionItem
+                                            key={item.id}
+                                            title={item.description?.slice(0, 20) + "..." || "No description"}
+                                            date={item.date.split("T")[0]} // Show only date part
+                                            amount={
+                                                amount > 0
+                                                    ? `${amount.toFixed(2)}`
+                                                    : `-${Math.abs(amount).toFixed(2)}`
+                                            }
+                                        />
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
+                    </>
+                ) : (
+                    <ScrollView
+                        style={styles.transactionsScroll}
+                        contentContainerStyle={styles.transactionsContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <InsightsBlock />
+                    </ScrollView>
+                )}
+            </View>
         </ResponsiveContainer>
     );
 }
 
 const styles = StyleSheet.create({
+    containerContent: {
+        flexGrow: 1,
+    },
     headerRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+    },
+    scrollSection: {
+        flex: 1,
+        minHeight: 0,
+    },
+    transactionsScroll: {
+        flex: 1,
+    },
+    transactionsContent: {
+        paddingBottom: 120,
+    },
+    centerState: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    errorText: {
+        color: "red",
+        padding: 10,
     },
 });

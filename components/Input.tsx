@@ -21,5 +21,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
     backgroundColor: "#fff",
-  },
+    outlineStyle: 'none',
+  } as any,
 });
