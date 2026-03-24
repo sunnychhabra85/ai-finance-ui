@@ -64,6 +64,15 @@ textarea {
   -webkit-appearance: none;
   appearance: none;
   border-radius: 8px;
+  outline: none;
+}
+
+/* Remove outline on focus */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  outline: none;
 }
 
 /* Button styling */

@@ -54,7 +54,11 @@ const styles = StyleSheet.create({
     height: 52,
     backgroundColor: "#F8FAFC",
   },
-  input: { flex: 1, color: colors.textDark },
+  input: { 
+    flex: 1, 
+    color: colors.textDark,
+    outlineStyle: 'none',
+  } as any,
   errorBorder: { borderColor: "#EF4444" },
   errorText: {
     color: "#EF4444",

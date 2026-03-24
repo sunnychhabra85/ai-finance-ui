@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../theme/colors";
 
 interface ChipsProps {
@@ -11,33 +11,42 @@ export const Chips = ({ selected, onSelect, categories = [] }: ChipsProps) => {
   const items = ["All", ...categories];
 
   return (
-    <View style={styles.row}>
-      {items.map((item) => (
-        <TouchableOpacity
-          key={item}
-          onPress={() => onSelect(item)}
-          style={[
-            styles.chip,
-            selected === item && styles.active,
-          ]}
-        >
-          <Text
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <View style={styles.row}>
+        {items.map((item) => (
+          <TouchableOpacity
+            key={item}
+            onPress={() => onSelect(item)}
             style={[
-              styles.text,
-              selected === item && styles.activeText,
+              styles.chip,
+              selected === item && styles.active,
             ]}
           >
-            {item}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+            <Text
+              style={[
+                styles.text,
+                selected === item && styles.activeText,
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </ScrollView>
   );
 };
 
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 10, marginVertical: 14 },
+  scrollContent: {
+    paddingVertical: 14,
+  },
+  row: { flexDirection: "row", gap: 10 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,

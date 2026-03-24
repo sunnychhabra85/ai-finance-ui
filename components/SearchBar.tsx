@@ -25,5 +25,8 @@ const styles = StyleSheet.create({
     height: 48,
     gap: 10,
   },
-  input: { flex: 1 },
+  input: { 
+    flex: 1,
+    outlineStyle: 'none',
+  } as any,
 });

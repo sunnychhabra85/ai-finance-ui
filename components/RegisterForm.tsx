@@ -2,17 +2,46 @@ import { registerApi } from "@/services/authApi";
 import { useAuthStore } from "@/store/authStore";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Alert } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { isEmailValid, isPasswordValid } from "../utils/validators";
 import { AppButton } from "./AppButton";
 import { AppInput } from "./AppInput";
 import { Card } from "./Card";
+
+const extractApiErrorMessage = (error: unknown, fallback: string) => {
+  const rawMessage = error instanceof Error ? error.message : String(error ?? "");
+  if (!rawMessage) return fallback;
+
+  // Handles messages like: "API Error: 400 Bad Request - {\"message\":[...]}"
+  const parts = rawMessage.split(" - ");
+  const maybeJson = parts.length > 1 ? parts[parts.length - 1] : "";
+
+  if (maybeJson) {
+    try {
+      const parsed = JSON.parse(maybeJson);
+      const apiMessage = parsed?.message;
+
+      if (Array.isArray(apiMessage) && apiMessage.length > 0) {
+        return String(apiMessage[0]);
+      }
+
+      if (typeof apiMessage === "string" && apiMessage.trim()) {
+        return apiMessage;
+      }
+    } catch {
+      // Fall back to plain message when payload is not JSON.
+    }
+  }
+
+  return rawMessage;
+};
 
 export const RegisterForm = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const login = useAuthStore((s) => s.login);
 
@@ -33,34 +62,65 @@ export const RegisterForm = () => {
     isPasswordValid(password);
 
   const handleRegister = async () => {
-  try {
-    const res = await registerApi(email, password, name);
-    login(res.access_token);
-    router.replace('/(tabs)/overview');
-  } catch (e) {
-    Alert.alert('Register failed');
-  }
-};
+    try {
+      setError(null);
+      const res = await registerApi(email, password, name);
+      const accessToken =
+        res?.data?.tokens?.accessToken || res?.access_token || res?.token;
+      const user = res?.data?.user ?? true;
+
+      if (!accessToken) {
+        setError("Registration succeeded, but login token is missing. Please login.");
+        return;
+      }
+
+      login(accessToken, user);
+      router.replace('/(tabs)/overview');
+    } catch (e: any) {
+      console.error('Registration error:', e);
+      const errorMessage = extractApiErrorMessage(
+        e,
+        'Registration failed. Please try again.'
+      );
+      setError(errorMessage);
+    }
+  };
 
   return (
     <Card>
+      {error && <Text style={styles.errorMessage}>{error}</Text>}
       <AppInput
-        placeholder="John Doe"
+          label="Full Name"
+          icon="person-outline"
+          placeholder="Enter your full name"
         value={name}
-        onChangeText={setName}
+        onChangeText={(text: string) => {
+          setName(text);
+          setError(null);
+        }}
         error={nameError}
       />
       <AppInput
-        placeholder="john@example.com"
+          label="Email"
+          icon="mail-outline"
+        placeholder="Enter your email"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(text: string) => {
+          setEmail(text);
+          setError(null);
+        }}
         error={emailError}
       />
       <AppInput
-        placeholder="Password"
+          label="Password"
+          icon="lock-closed-outline"
+        placeholder="Enter your password"
         secureTextEntry
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(text: string) => {
+          setPassword(text);
+          setError(null);
+        }}
         error={passError}
       />
 
@@ -75,3 +135,18 @@ export const RegisterForm = () => {
     </Card>
   );
 };
+
+const styles = StyleSheet.create({
+  errorMessage: {
+    backgroundColor: '#FEE2E2',
+    color: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+    fontSize: 14,
+    fontWeight: '500',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+  },
+});
